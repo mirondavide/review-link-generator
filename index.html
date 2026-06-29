@@ -163,7 +163,7 @@
   </div>
 
   <label>Link Google Maps</label>
-  <textarea id="input" placeholder="Incolla qui il link Google Maps dell'attività..."></textarea>
+  <textarea id="input" placeholder="Incolla qui il link Google Maps (lungo o corto maps.app.goo.gl)..."></textarea>
 
   <button id="btn" onclick="generate()">Genera link recensione</button>
 
@@ -182,17 +182,6 @@
   const WORKER_URL = 'https://review-link-worker.mirondevx.workers.dev';
   let reviewLink = '';
 
-  function parseMapsUrl(url) {
-    url = url.trim();
-    const nameMatch = url.match(/\/maps\/place\/([^/@?]+)/);
-    const coordMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-    return {
-      name: nameMatch ? decodeURIComponent(nameMatch[1].replace(/\+/g, ' ')) : null,
-      lat: coordMatch ? parseFloat(coordMatch[1]) : null,
-      lng: coordMatch ? parseFloat(coordMatch[2]) : null,
-    };
-  }
-
   async function generate() {
     const input = document.getElementById('input').value.trim();
     const btn = document.getElementById('btn');
@@ -204,9 +193,8 @@
 
     if (!input) { showError('Incolla un link Google Maps.'); return; }
 
-    const parsed = parseMapsUrl(input);
-    if (!parsed.name) {
-      showError('Link non valido. Usa un link del tipo: https://www.google.com/maps/place/...');
+    if (!input.includes('google.com/maps') && !input.includes('maps.app.goo.gl') && !input.includes('goo.gl/maps')) {
+      showError('Link non valido. Incolla un link Google Maps o maps.app.goo.gl');
       return;
     }
 
@@ -217,7 +205,7 @@
       const res = await fetch(WORKER_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: parsed.name, lat: parsed.lat, lng: parsed.lng }),
+        body: JSON.stringify({ url: input }),
       });
 
       const data = await res.json();
