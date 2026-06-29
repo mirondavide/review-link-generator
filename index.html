@@ -33,11 +33,6 @@
       margin-bottom: 28px;
     }
 
-    .logo svg {
-      width: 32px;
-      height: 32px;
-    }
-
     h1 {
       font-size: 20px;
       font-weight: 700;
@@ -68,13 +63,8 @@
       font-family: inherit;
     }
 
-    textarea:focus {
-      border-color: #4285f4;
-    }
-
-    textarea::placeholder {
-      color: #b0b8c4;
-    }
+    textarea:focus { border-color: #4285f4; }
+    textarea::placeholder { color: #b0b8c4; }
 
     button#btn {
       width: 100%;
@@ -94,10 +84,7 @@
     button#btn:active { transform: scale(0.98); }
     button#btn:disabled { background: #a8c4f5; cursor: not-allowed; }
 
-    #result {
-      margin-top: 24px;
-      display: none;
-    }
+    #result { margin-top: 24px; display: none; }
 
     .result-box {
       background: #f7f9ff;
@@ -163,15 +150,13 @@
     }
 
     @keyframes spin { to { transform: rotate(360deg); } }
-
-    #map { display: none; }
   </style>
 </head>
 <body>
 
 <div class="card">
   <div class="logo">
-    <svg viewBox="0 0 24 24" fill="none">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
       <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z" fill="#4285f4"/>
     </svg>
     <h1>Review Link Generator</h1>
@@ -193,9 +178,8 @@
   </div>
 </div>
 
-<div id="map"></div>
-
 <script>
+  const WORKER_URL = 'https://review-link-worker.mirondevx.workers.dev';
   let reviewLink = '';
 
   function parseMapsUrl(url) {
@@ -209,7 +193,7 @@
     };
   }
 
-  function generate() {
+  async function generate() {
     const input = document.getElementById('input').value.trim();
     const btn = document.getElementById('btn');
     const errorEl = document.getElementById('error');
@@ -218,10 +202,7 @@
     errorEl.style.display = 'none';
     resultEl.style.display = 'none';
 
-    if (!input) {
-      showError('Incolla un link Google Maps.');
-      return;
-    }
+    if (!input) { showError('Incolla un link Google Maps.'); return; }
 
     const parsed = parseMapsUrl(input);
     if (!parsed.name) {
@@ -232,38 +213,28 @@
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span>Ricerca in corso...';
 
-    const map = new google.maps.Map(document.getElementById('map'), {
-      center: parsed.lat && parsed.lng ? { lat: parsed.lat, lng: parsed.lng } : { lat: 0, lng: 0 },
-      zoom: 15,
-    });
+    try {
+      const res = await fetch(WORKER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: parsed.name, lat: parsed.lat, lng: parsed.lng }),
+      });
 
-    const service = new google.maps.places.PlacesService(map);
+      const data = await res.json();
 
-    const request = {
-      query: parsed.name,
-      fields: ['place_id', 'name'],
-    };
-
-    if (parsed.lat && parsed.lng) {
-      request.locationBias = {
-        radius: 500,
-        center: { lat: parsed.lat, lng: parsed.lng },
-      };
-    }
-
-    service.findPlaceFromQuery(request, (results, status) => {
-      btn.disabled = false;
-      btn.innerHTML = 'Genera link recensione';
-
-      if (status === google.maps.places.PlacesServiceStatus.OK && results && results[0]) {
-        const placeId = results[0].place_id;
-        reviewLink = `https://search.google.com/local/writereview?placeid=${placeId}`;
+      if (res.ok && data.review_link) {
+        reviewLink = data.review_link;
         document.getElementById('link-text').textContent = reviewLink;
         resultEl.style.display = 'block';
       } else {
-        showError('Attività non trovata. Prova con un link Google Maps più preciso.');
+        showError(data.error || 'Attività non trovata. Riprova con un link più preciso.');
       }
-    });
+    } catch (e) {
+      showError('Errore di connessione. Riprova.');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = 'Genera link recensione';
+    }
   }
 
   function copyLink() {
@@ -272,10 +243,7 @@
       const btn = document.querySelector('.copy-btn');
       btn.textContent = 'Copiato!';
       btn.classList.add('copied');
-      setTimeout(() => {
-        btn.textContent = 'Copia link';
-        btn.classList.remove('copied');
-      }, 2000);
+      setTimeout(() => { btn.textContent = 'Copia link'; btn.classList.remove('copied'); }, 2000);
     });
   }
 
@@ -285,8 +253,6 @@
     el.style.display = 'block';
   }
 </script>
-
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDytVV5tz6Ro8Zt1pkahdnwj0pVxKfI3gk&libraries=places" async defer></script>
 
 </body>
 </html>
