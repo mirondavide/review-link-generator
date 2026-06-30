@@ -16,13 +16,6 @@ function parseMapsUrl(url) {
   };
 }
 
-async function shortenUrl(url) {
-  try {
-    const res = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(url)}`);
-    if (res.ok) return (await res.text()).trim();
-  } catch { /* ignore */ }
-  return url;
-}
 
 export default {
   async fetch(request, env) {
@@ -41,10 +34,9 @@ export default {
 
     const { url: inputMapsUrl, place_id: confirmedPlaceId } = body;
 
-    // Path B: user confirmed a specific place — just shorten and return
+    // Path B: user confirmed a specific place — return review link directly
     if (confirmedPlaceId) {
-      const longLink = `https://search.google.com/local/writereview?placeid=${confirmedPlaceId}`;
-      const reviewLink = await shortenUrl(longLink);
+      const reviewLink = `https://search.google.com/local/writereview?placeid=${confirmedPlaceId}`;
       return new Response(JSON.stringify({ place_id: confirmedPlaceId, review_link: reviewLink }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -134,8 +126,7 @@ export default {
 
     // Single unambiguous result — return directly
     if (candidates.length === 1) {
-      const longLink = `https://search.google.com/local/writereview?placeid=${candidates[0].id}`;
-      const reviewLink = await shortenUrl(longLink);
+      const reviewLink = `https://search.google.com/local/writereview?placeid=${candidates[0].id}`;
       return new Response(JSON.stringify({ place_id: candidates[0].id, review_link: reviewLink }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
