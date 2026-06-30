@@ -52,12 +52,23 @@ export default {
     // Expand short/share URLs
     if (inputUrl.includes('goo.gl') || inputUrl.includes('maps.app') || inputUrl.includes('share.google')) {
       try {
-        const expanded = await fetch(inputUrl, { redirect: 'follow' });
+        const expanded = await fetch(inputUrl, {
+          redirect: 'follow',
+          headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1' },
+        });
         inputUrl = expanded.url;
       } catch {
         return new Response(JSON.stringify({ error: 'Impossibile espandere il link corto.' }), {
           status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
+      }
+    }
+
+    // Google redirects Cloudflare Workers to /sorry/index — extract the real URL from ?continue=
+    if (inputUrl.includes('/sorry/index')) {
+      const continueMatch = inputUrl.match(/continue=([^&]+)/);
+      if (continueMatch) {
+        inputUrl = decodeURIComponent(continueMatch[1]);
       }
     }
 
