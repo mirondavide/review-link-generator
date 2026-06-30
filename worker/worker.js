@@ -1,8 +1,16 @@
 function parseMapsUrl(url) {
-  const nameMatch = url.match(/\/maps\/place\/([^/@?]+)/);
+  const nameMatch = url.match(/\/maps\/(?:place|search)\/([^/@?]+)/);
   const coordMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+  const qMatch = url.match(/[?&]q=([^&]+)/);
+
+  const name = nameMatch
+    ? decodeURIComponent(nameMatch[1].replace(/\+/g, ' '))
+    : qMatch
+    ? decodeURIComponent(qMatch[1].replace(/\+/g, ' '))
+    : null;
+
   return {
-    name: nameMatch ? decodeURIComponent(nameMatch[1].replace(/\+/g, ' ')) : null,
+    name,
     lat: coordMatch ? parseFloat(coordMatch[1]) : null,
     lng: coordMatch ? parseFloat(coordMatch[2]) : null,
   };
@@ -41,7 +49,7 @@ export default {
       });
     }
 
-    // Expand short URLs (maps.app.goo.gl, share.google)
+    // Expand short/share URLs
     if (inputUrl.includes('goo.gl') || inputUrl.includes('maps.app') || inputUrl.includes('share.google')) {
       try {
         const expanded = await fetch(inputUrl, { redirect: 'follow' });
@@ -55,29 +63,47 @@ export default {
 
     const parsed = parseMapsUrl(inputUrl);
 
-    if (!parsed.name) {
+    if (!parsed.name && !parsed.lat) {
       return new Response(JSON.stringify({ error: 'Link non valido. Usa un link Google Maps.' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const searchBody = { textQuery: parsed.name };
+    let googleRes;
 
-    if (parsed.lat && parsed.lng) {
-      searchBody.locationBias = {
-        circle: { center: { latitude: parsed.lat, longitude: parsed.lng }, radius: 500 },
-      };
+    if (parsed.name) {
+      const searchBody = { textQuery: parsed.name };
+      if (parsed.lat && parsed.lng) {
+        searchBody.locationBias = {
+          circle: { center: { latitude: parsed.lat, longitude: parsed.lng }, radius: 500 },
+        };
+      }
+      googleRes = await fetch('https://places.googleapis.com/v1/places:searchText', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': env.GOOGLE_MAPS_KEY,
+          'X-Goog-FieldMask': 'places.id,places.displayName',
+        },
+        body: JSON.stringify(searchBody),
+      });
+    } else {
+      // Coordinates only — nearby search with tight radius
+      googleRes = await fetch('https://places.googleapis.com/v1/places:searchNearby', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': env.GOOGLE_MAPS_KEY,
+          'X-Goog-FieldMask': 'places.id,places.displayName',
+        },
+        body: JSON.stringify({
+          locationRestriction: {
+            circle: { center: { latitude: parsed.lat, longitude: parsed.lng }, radius: 50 },
+          },
+          maxResultCount: 1,
+        }),
+      });
     }
-
-    const googleRes = await fetch('https://places.googleapis.com/v1/places:searchText', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Goog-Api-Key': env.GOOGLE_MAPS_KEY,
-        'X-Goog-FieldMask': 'places.id,places.displayName',
-      },
-      body: JSON.stringify(searchBody),
-    });
 
     const data = await googleRes.json();
 
