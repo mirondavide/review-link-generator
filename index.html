@@ -126,6 +126,45 @@
     .copy-btn:hover { background: #2d9249; }
     .copy-btn.copied { background: #188038; }
 
+    /* Candidates picker */
+    #candidates {
+      margin-top: 20px;
+      display: none;
+    }
+
+    .candidates-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 10px;
+    }
+
+    .candidate-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border: 2px solid #e8ecf0;
+      border-radius: 10px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .candidate-item:hover { border-color: #4285f4; background: #f7f9ff; }
+
+    .candidate-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1a1a2e;
+    }
+
+    .candidate-address {
+      font-size: 12px;
+      color: #888;
+      margin-top: 2px;
+    }
+
     #error {
       margin-top: 14px;
       padding: 12px 16px;
@@ -169,6 +208,11 @@
 
   <div id="error"></div>
 
+  <div id="candidates">
+    <div class="candidates-label">Trovate più attività con lo stesso nome — seleziona quella giusta:</div>
+    <div id="candidates-list"></div>
+  </div>
+
   <div id="result">
     <div class="result-box">
       <div class="result-label">Link recensione Google</div>
@@ -187,9 +231,11 @@
     const btn = document.getElementById('btn');
     const errorEl = document.getElementById('error');
     const resultEl = document.getElementById('result');
+    const candidatesEl = document.getElementById('candidates');
 
     errorEl.style.display = 'none';
     resultEl.style.display = 'none';
+    candidatesEl.style.display = 'none';
 
     if (!input) { showError('Incolla un link Google Maps.'); return; }
 
@@ -211,9 +257,9 @@
       const data = await res.json();
 
       if (res.ok && data.review_link) {
-        reviewLink = data.review_link;
-        document.getElementById('link-text').textContent = reviewLink;
-        resultEl.style.display = 'block';
+        showResult(data.review_link);
+      } else if (res.ok && data.candidates) {
+        showCandidates(data.candidates);
       } else {
         showError(data.error || 'Attività non trovata. Riprova con un link più preciso.');
       }
@@ -223,6 +269,58 @@
       btn.disabled = false;
       btn.innerHTML = 'Genera link recensione';
     }
+  }
+
+  async function confirmCandidate(placeId) {
+    const btn = document.getElementById('btn');
+    const candidatesEl = document.getElementById('candidates');
+    candidatesEl.style.display = 'none';
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Generazione link...';
+
+    try {
+      const res = await fetch(WORKER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ place_id: placeId }),
+      });
+      const data = await res.json();
+      if (res.ok && data.review_link) {
+        showResult(data.review_link);
+      } else {
+        showError(data.error || 'Errore nella generazione del link.');
+      }
+    } catch {
+      showError('Errore di connessione. Riprova.');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = 'Genera link recensione';
+    }
+  }
+
+  function showCandidates(candidates) {
+    const list = document.getElementById('candidates-list');
+    list.innerHTML = '';
+    candidates.forEach(c => {
+      const item = document.createElement('div');
+      item.className = 'candidate-item';
+      item.innerHTML = `
+        <div>
+          <div class="candidate-name">${escHtml(c.name)}</div>
+          <div class="candidate-address">${escHtml(c.address)}</div>
+        </div>
+      `;
+      item.addEventListener('click', () => confirmCandidate(c.id));
+      list.appendChild(item);
+    });
+    document.getElementById('candidates').style.display = 'block';
+  }
+
+  function showResult(link) {
+    reviewLink = link;
+    document.getElementById('link-text').textContent = reviewLink;
+    document.getElementById('result').style.display = 'block';
   }
 
   function copyLink() {
@@ -239,6 +337,10 @@
     const el = document.getElementById('error');
     el.textContent = msg;
     el.style.display = 'block';
+  }
+
+  function escHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 </script>
 
