@@ -258,10 +258,8 @@
 
       if (res.ok && data.review_link) {
         showResult(data.review_link);
-      } else if (res.ok && data.candidates) {
-        showCandidates(data.candidates);
       } else {
-        showError(data.error || 'Attività non trovata. Riprova con un link più preciso.');
+        showError(data.error || 'Impossibile generare il link. Riprova con un link più preciso.');
       }
     } catch (e) {
       showError('Errore di connessione. Riprova.');
