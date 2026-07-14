@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Google Review Link Generator</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -126,6 +127,40 @@
     .copy-btn:hover { background: #2d9249; }
     .copy-btn.copied { background: #188038; }
 
+    #qr-section {
+      margin-top: 20px;
+      text-align: center;
+      display: none;
+    }
+
+    #qr-section .result-label { text-align: left; margin-bottom: 12px; }
+
+    #qr-canvas {
+      display: inline-block;
+      border: 1px solid #e8ecf0;
+      border-radius: 8px;
+      padding: 12px;
+      background: white;
+    }
+
+    #qr-canvas img, #qr-canvas canvas { display: block; }
+
+    .download-btn {
+      width: 100%;
+      margin-top: 12px;
+      padding: 11px;
+      background: #1a1a2e;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .download-btn:hover { background: #2d2d4e; }
+
     /* Candidates picker */
     #candidates {
       margin-top: 20px;
@@ -220,6 +255,12 @@
     </div>
     <button class="copy-btn" onclick="copyLink()">Copia link</button>
   </div>
+
+  <div id="qr-section">
+    <div class="result-label">QR Code</div>
+    <div id="qr-canvas"></div>
+    <button class="download-btn" onclick="downloadQR()">Scarica QR Code</button>
+  </div>
 </div>
 
 <script>
@@ -236,6 +277,7 @@
     errorEl.style.display = 'none';
     resultEl.style.display = 'none';
     candidatesEl.style.display = 'none';
+    document.getElementById('qr-section').style.display = 'none';
 
     if (!input) { showError('Incolla un link Google Maps.'); return; }
 
@@ -319,6 +361,30 @@
     reviewLink = link;
     document.getElementById('link-text').textContent = reviewLink;
     document.getElementById('result').style.display = 'block';
+    generateQR(link);
+  }
+
+  function generateQR(link) {
+    const container = document.getElementById('qr-canvas');
+    container.innerHTML = '';
+    new QRCode(container, {
+      text: link,
+      width: 220,
+      height: 220,
+      colorDark: '#1a1a2e',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M,
+    });
+    document.getElementById('qr-section').style.display = 'block';
+  }
+
+  function downloadQR() {
+    const canvas = document.querySelector('#qr-canvas canvas');
+    if (!canvas) return;
+    const a = document.createElement('a');
+    a.download = 'qr-recensione.png';
+    a.href = canvas.toDataURL('image/png');
+    a.click();
   }
 
   function copyLink() {
