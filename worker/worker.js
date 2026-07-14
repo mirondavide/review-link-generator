@@ -1,15 +1,24 @@
+function hexIdsToChIJ(featureHex, cidHex) {
+  const feature = BigInt('0x' + featureHex);
+  const cid = BigInt('0x' + cidHex);
+  const bytes = new Uint8Array(20);
+  bytes[0] = 0x0A;
+  bytes[1] = 0x12; // length = 18
+  bytes[2] = 0x09; // field 1, fixed64
+  for (let i = 0; i < 8; i++) bytes[3 + i] = Number((feature >> BigInt(i * 8)) & BigInt(0xFF));
+  bytes[11] = 0x11; // field 2, fixed64
+  for (let i = 0; i < 8; i++) bytes[12 + i] = Number((cid >> BigInt(i * 8)) & BigInt(0xFF));
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
 function extractPlaceInfo(url) {
-  // Full Maps URL: place_id encoded as !1sChIJ... in the data param
-  const placeIdMatch = url.match(/!1s(ChIJ[^!&]+)/);
+  // ChIJ place_id in !1s field
+  const placeIdMatch = url.match(/!1s(ChIJ[^!&?]+)/);
   if (placeIdMatch) return { type: 'place_id', value: decodeURIComponent(placeIdMatch[1]) };
 
-  // Full Maps URL: kgmid encoded as !16s%2Fg%2F... in the data param
-  const kgmidDataMatch = url.match(/!16s(%2Fg%2F[^!&?]+)/);
-  if (kgmidDataMatch) return { type: 'kgmid', value: decodeURIComponent(kgmidDataMatch[1]) };
-
-  // Sorry page continue URL: kgmid as ?kgmid=/g/...
-  const kgmidParamMatch = url.match(/[?&]kgmid=(\/[a-z]\/[^&?#]+)/);
-  if (kgmidParamMatch) return { type: 'kgmid', value: decodeURIComponent(kgmidParamMatch[1]) };
+  // Hex feature_id:cid in !1s field — convert to ChIJ
+  const hexMatch = url.match(/!1s0x([0-9a-f]+):0x([0-9a-f]+)/i);
+  if (hexMatch) return { type: 'place_id', value: hexIdsToChIJ(hexMatch[1], hexMatch[2]) };
 
   return null;
 }
@@ -48,7 +57,7 @@ export default {
       }
     }
 
-    // Handle /sorry/index — extract the continue URL (contains kgmid)
+    // Handle /sorry/index — extract the continue URL
     if (inputUrl.includes('/sorry/index')) {
       const m = inputUrl.match(/continue=([^&]+)/);
       if (m) inputUrl = decodeURIComponent(m[1]);
