@@ -4,11 +4,11 @@ function extractPlaceInfo(url) {
   if (placeIdMatch) return { type: 'place_id', value: decodeURIComponent(placeIdMatch[1]) };
 
   // Full Maps URL: kgmid encoded as !16s%2Fg%2F... in the data param
-  const kgmidDataMatch = url.match(/!16s(%2Fg%2F[^!&]+)/);
+  const kgmidDataMatch = url.match(/!16s(%2Fg%2F[^!&?]+)/);
   if (kgmidDataMatch) return { type: 'kgmid', value: decodeURIComponent(kgmidDataMatch[1]) };
 
   // Sorry page continue URL: kgmid as ?kgmid=/g/...
-  const kgmidParamMatch = url.match(/[?&]kgmid=(\/[a-z]\/[^&]+)/);
+  const kgmidParamMatch = url.match(/[?&]kgmid=(\/[a-z]\/[^&?#]+)/);
   if (kgmidParamMatch) return { type: 'kgmid', value: decodeURIComponent(kgmidParamMatch[1]) };
 
   return null;
