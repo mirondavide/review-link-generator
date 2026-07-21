@@ -20,6 +20,10 @@ function extractPlaceInfo(url) {
   const hexMatch = url.match(/!1s0x([0-9a-f]+):0x([0-9a-f]+)/i);
   if (hexMatch) return { type: 'place_id', value: hexIdsToChIJ(hexMatch[1], hexMatch[2]) };
 
+  // Hex feature_id:cid in ftid query param (e.g. /maps?q=...&ftid=0x..:0x..) — convert to ChIJ
+  const ftidMatch = url.match(/[?&]ftid=0x([0-9a-f]+):0x([0-9a-f]+)/i);
+  if (ftidMatch) return { type: 'place_id', value: hexIdsToChIJ(ftidMatch[1], ftidMatch[2]) };
+
   return null;
 }
 
