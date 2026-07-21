@@ -50,15 +50,15 @@ export default {
     // Expand short/share URLs
     if (inputUrl.includes('goo.gl') || inputUrl.includes('maps.app') || inputUrl.includes('share.google')) {
       try {
-        const expanded = await fetch(inputUrl, { redirect: 'follow', headers: browserHeaders });
+        const expanded = await fetch(inputUrl, { redirect: 'follow', headers: browserHeaders, signal: AbortSignal.timeout(8000) });
         inputUrl = expanded.url;
       } catch {
         return new Response(JSON.stringify({ error: 'Impossibile espandere il link.' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
     }
 
-    // Handle /sorry/index — extract the continue URL
-    if (inputUrl.includes('/sorry/index')) {
+    // Handle interstitial pages (/sorry/index, consent.google.com) — extract the continue URL
+    if (inputUrl.includes('/sorry/index') || inputUrl.includes('consent.google.com')) {
       const m = inputUrl.match(/continue=([^&]+)/);
       if (m) inputUrl = decodeURIComponent(m[1]);
     }
