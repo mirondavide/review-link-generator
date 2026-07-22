@@ -179,7 +179,7 @@
 </div>
 
 <script>
-  const WORKER_URL = 'https://review-link-worker.mirondevx.workers.dev';
+  const WORKER_URL = location.origin.includes('workers.dev') ? '/' : 'https://review-link-worker.mirondevx.workers.dev';
   let reviewLink = '';
 
   async function generate() {
